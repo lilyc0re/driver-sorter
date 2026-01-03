@@ -2,9 +2,35 @@ import cv2
 import numpy as np
 from sklearn.cluster import KMeans
 import mediapipe as mp
-# Accessing the legacy solution directly
-mp_face_mesh = mp.solutions.face_mesh
-face_mesh = mp_face_mesh.FaceMesh(static_image_mode=True)
+from mediapipe.tasks.python import vision
+from mediapipe.tasks.python import BaseOptions
+import urllib.request
+import os
+helmet_map = { ###edit this dumbassssssss
+    assets = {
+    "REDBULL": {
+        "verstappen": "helmets/rb_max.png",
+        "perez": "helmets/rb_checo.png"
+    },
+    "MERCEDES": {
+        "hamilton": "helmets/merc_lewis.png",
+        "russell": "helmets/merc_george.png"
+    },
+    "FERRARI": {
+        "leclerc": "helmets/fer_charles.png",
+        "sainz": "helmets/fer_carlos.png"
+    }
+}
+}
+# Download the face landmarker model if not present
+model_path = 'face_landmarker.task'
+if not os.path.exists(model_path):
+    url = 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task'
+    urllib.request.urlretrieve(url, model_path)
+
+base_options = BaseOptions(model_asset_path=model_path)
+options = vision.FaceLandmarkerOptions(base_options=base_options, num_faces=1)
+face_mesh = vision.FaceLandmarker.create_from_options(options)
 
 def run_f1_quiz():
     print("\n🏎️  THE ULTIMATE 2025 F1 TEAM SORTING EXAM  🏎️")
@@ -99,7 +125,10 @@ def run_f1_quiz():
     return f"helmets/{sorted_team}.png"
 
 def get_driver_assignment(team_name):
-    print(f"\n🏁 One final question to see whose seat you're taking at {team_name.upper()}...")
+    # Extract team name from path
+    team = team_name.split('/')[-1].split('.')[0].lower()
+    
+    print(f"\n🏁 One final question to see whose seat you're taking at {team.upper()}...")
     
     style = input("What is your racing philosophy? (A: Tactical & Experienced, B: Full Attack & Fearless): ").lower()
     
@@ -113,7 +142,7 @@ def get_driver_assignment(team_name):
         "astonmartin": ("Fernando Alonso", "Lance Stroll")
     }
     
-    drivers = lineups.get(team_name)
+    drivers = lineups.get(team)
     assigned_driver = drivers[0] if 'a' in style else drivers[1]
     
     print(f"\n🔥 IT'S OFFICIAL: You are replacing {assigned_driver} for the 2025 season!")
@@ -138,13 +167,13 @@ def overlay_transparent(bg, overlay, x, y):
 
 def apply_helmet(img, helmet_path):
     # 1. Detect face landmarks
-    results = face_mesh.process(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
-    if not results.multi_face_landmarks:
+    results = face_mesh.detect(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+    if not results.face_landmarks:
         print("No face detected!")
         return img
 
     # 2. Get the head bounding box
-    landmarks = results.multi_face_landmarks[0].landmark
+    landmarks = results.face_landmarks[0]
     h, w, _ = img.shape
     top = int(landmarks[10].y * h)      # Forehead
     bottom = int(landmarks[152].y * h)   # Chin
@@ -171,13 +200,15 @@ if __name__ == "__main__":
     team = run_f1_quiz()
     driver = get_driver_assignment(team)
     
-    img = cv2.imread('tonyy.jpg')
+    img = cv2.imread('russell.jpg')
     if img is not None:
+        h, w, _ = img.shape
+        team_display = team.split('/')[-1].split('.')[0].upper()
         # Put the high-def helmet on the high-def photo
-        final_img = apply_helmet(img, f"helmets/{team}.png")
+        final_img = apply_helmet(img, team)
         
         # Add the 2025 Branding
-        cv2.putText(final_img, f"TEAM: {team.upper()}", (50, h-100), 
+        cv2.putText(final_img, f"TEAM: {team_display}", (50, h-100), 
                     cv2.FONT_HERSHEY_DUPLEX, 1.2, (255, 255, 255), 2)
         cv2.putText(final_img, f"DRIVER: {driver}", (50, h-50), 
                     cv2.FONT_HERSHEY_DUPLEX, 1.2, (255, 255, 255), 2)
