@@ -17,7 +17,7 @@ assets ={
         "russell": "helmets/gr1.png"
     },
     "ferrari": {
-        "leclerc": "helmets/cl1.png",
+        "leclerc": "helmets/cl1.jpg",
         "sainz": "helmets/lh1.png"
     },
     "aston martin": {
