@@ -6,32 +6,46 @@ from mediapipe.tasks.python import vision
 from mediapipe.tasks.python import BaseOptions
 import urllib.request
 import os
-###edit this dumbassssssss
+os.chdir(os.path.dirname(__file__))
 assets ={
     "redbull": {
-        "verstappen": "helmets/mv1.png",
-        "yuki": "helmets/yt1.png"
+        "verstappen": "helmets/redbull/max/mv1.png",
+        "yuki": "helmets/redbull/yuki/yt1.png"
     },
     "mercedes": {
-        "antonelli": "helmets/ka1.png",
-        "russell": "helmets/gr1.png"
+        "russell": "helmets/mercedes/george/gr1.png",
+        "antonelli": "helmets/mercedes/kimi/ka1.png"
     },
     "ferrari": {
-        "leclerc": "helmets/cl1.jpg",
-        "sainz": "helmets/lh1.png"
+        "leclerc": "helmets/ferrari/charles/cl1.jpg",
+        "sainz": "helmets/ferrari/lewis/lh1.png"
     },
-    "aston martin": {
-        "stroll": "helmets/ls1.png",
-        "alonso": "helmets/fa1.png"
+    "astonmartin": {
+        "alonso": "helmets/aston martin/alonso/fa1.png",
+        "stroll": "helmets/aston martin/lance/ls1.png"
     },
     "williams": {
-        "albon": "helmets/aa1.png",
-        "sainz": "helmets/ca1.png"
+        "albon": "helmets/williams/alex/aa1.png",
+        "sainz": "helmets/williams/carlos/cs1.png"
     },
     "mclaren": {
-        "piastri": "helmets/os1.png",
-        "norris": "helmets/ln1.png"
+        "piastri": "helmets/mclaren/oscar/op1.png",
+        "norris": "helmets/mclaren/lando/ln1.png"
     }
+}
+
+driver_to_key = {
+    "Max Verstappen": "verstappen",
+    "Yuki Tsunoda": "yuki",
+    "Lando Norris": "norris",
+    "Oscar Piastri": "piastri",
+    "George Russell": "russell",
+    "Kimi Antonelli": "antonelli",
+    "Charles Leclerc": "leclerc",
+    "Carlos Sainz": "sainz",
+    "Alex Albon": "albon",
+    "Fernando Alonso": "alonso",
+    "Lance Stroll": "stroll"
 }
 
 # Download the face landmarker model if not present
@@ -134,7 +148,7 @@ def run_f1_quiz():
     print(f"\n✨ THE RESULTS ARE IN...")
     print(f"Based on your answers, you are a perfect match for {sorted_team.upper()}!")
     
-    return f"helmets/{sorted_team}.png"
+    return sorted_team
 
 def get_driver_assignment(team_name):
     # Extract team name from path
@@ -146,7 +160,7 @@ def get_driver_assignment(team_name):
     
     # Driver Database for 2025
     lineups = {
-        "ferrari": ("Lewis Hamilton", "Charles Leclerc"),
+        "ferrari": ("Carlos Sainz", "Charles Leclerc"),
         "mercedes": ("George Russell", "Kimi Antonelli"),
         "redbull": ("Max Verstappen", "Yuki Tsunoda"),
         "mclaren": ("Lando Norris", "Oscar Piastri"),
@@ -161,25 +175,38 @@ def get_driver_assignment(team_name):
     return assigned_driver
 
 def overlay_transparent(bg, overlay, x, y):
-    #Std opencv logic to overlay a png with transparency onto a bg
-    bg_width=bg.shape[1]
-    bg_height=bg.shape[0]
+    bg_h, bg_w = bg.shape[:2]
+    ol_h, ol_w = overlay.shape[:2]
 
-    if x>=bg_width or y>= bg_height:
+    # Calculate the region to copy
+    x_start = max(x, 0)
+    y_start = max(y, 0)
+    x_end = min(x + ol_w, bg_w)
+    y_end = min(y + ol_h, bg_h)
+
+    if x_end <= x_start or y_end <= y_start:
         return bg
-    
-    #extract over alpha channel(transparency)
 
-    h,w =overlay.shape[0], overlay.shape[1]
-    if x+ w> bg_width:w=bg_width-x
-    if y+h> bg_height:h=bg_height-y
+    # Corresponding region in overlay
+    ol_x_start = max(0, -x)
+    ol_y_start = max(0, -y)
+    ol_x_end = ol_x_start + (x_end - x_start)
+    ol_y_end = ol_y_start + (y_end - y_start)
 
-    overlay_image=overlay[0:h, 0:w, 0:3]
-    mask=overlay[0:h, 0:w,3]/255.0 #normalizing alpha to 0.0 from -1.0
+    overlay_region = overlay[ol_y_start:ol_y_end, ol_x_start:ol_x_end]
+    mask = overlay_region[:, :, 3] / 255.0
+    overlay_rgb = overlay_region[:, :, :3]
+
+    # Blend
+    for c in range(3):
+        bg[y_start:y_end, x_start:x_end, c] = (1 - mask) * bg[y_start:y_end, x_start:x_end, c] + mask * overlay_rgb[:, :, c]
+
+    return bg
 
 def apply_helmet(img, helmet_path):
     # 1. Detect face landmarks
-    results = face_mesh.detect(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+    mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+    results = face_mesh.detect(mp_image)
     if not results.face_landmarks:
         print("No face detected!")
         return img
@@ -198,13 +225,15 @@ def apply_helmet(img, helmet_path):
     # 3. Load the realistic helmet
     helmet = cv2.imread(helmet_path, -1) # Load with alpha
     if helmet is None: return img
+    if helmet.shape[2] == 3:
+        helmet = cv2.cvtColor(helmet, cv2.COLOR_BGR2BGRA)
 
     # 4. Resize: We make the helmet ~60% wider than the face to cover the ears/hair
-    helmet_resized = cv2.resize(helmet, (int(face_width * 1.6), int(face_height * 2.0)))
+    helmet_resized = cv2.resize(helmet, (int(face_width * 2.0), int(face_height * 2.5)))
 
     # 5. Position: Offset it so the visor lines up with the eyes
-    x_offset = left - int(face_width * 0.3)
-    y_offset = top - int(face_height * 0.7)
+    x_offset = left - int(face_width * 0.5)
+    y_offset = top - int(face_height * 1.0)
 
     return overlay_transparent(img, helmet_resized, x_offset, y_offset)
 
@@ -212,12 +241,15 @@ if __name__ == "__main__":
     team = run_f1_quiz()
     driver = get_driver_assignment(team)
     
-    img = cv2.imread('russell.jpg')
+    helmet_key = driver_to_key.get(driver, driver.split()[-1].lower())
+    helmet_path = assets[team][helmet_key]
+    
+    img = cv2.imread('leclerc.jpg')
     if img is not None:
         h, w, _ = img.shape
-        team_display = team.split('/')[-1].split('.')[0].upper()
+        team_display = team.upper()
         # Put the high-def helmet on the high-def photo
-        final_img = apply_helmet(img, team)
+        final_img = apply_helmet(img, helmet_path)
         
         # Add the 2025 Branding
         cv2.putText(final_img, f"TEAM: {team_display}", (50, h-100), 
@@ -227,3 +259,5 @@ if __name__ == "__main__":
 
         cv2.imwrite('f1_driver_card.png', final_img)
         print(f"Deployment successful! Welcome to the grid, {driver}.")
+    else:
+        print("Could not load leclerc.jpg")
