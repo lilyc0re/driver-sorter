@@ -6,22 +6,34 @@ from mediapipe.tasks.python import vision
 from mediapipe.tasks.python import BaseOptions
 import urllib.request
 import os
-helmet_map = { ###edit this dumbassssssss
-    assets = {
-    "REDBULL": {
-        "verstappen": "helmets/rb_max.png",
-        "perez": "helmets/rb_checo.png"
+###edit this dumbassssssss
+assets ={
+    "redbull": {
+        "verstappen": "helmets/mv1.png",
+        "yuki": "helmets/yt1.png"
     },
-    "MERCEDES": {
-        "hamilton": "helmets/merc_lewis.png",
-        "russell": "helmets/merc_george.png"
+    "mercedes": {
+        "antonelli": "helmets/ka1.png",
+        "russell": "helmets/gr1.png"
     },
-    "FERRARI": {
-        "leclerc": "helmets/fer_charles.png",
-        "sainz": "helmets/fer_carlos.png"
+    "ferrari": {
+        "leclerc": "helmets/cl1.png",
+        "sainz": "helmets/lh1.png"
+    },
+    "aston martin": {
+        "stroll": "helmets/ls1.png",
+        "alonso": "helmets/fa1.png"
+    },
+    "williams": {
+        "albon": "helmets/aa1.png",
+        "sainz": "helmets/ca1.png"
+    },
+    "mclaren": {
+        "piastri": "helmets/os1.png",
+        "norris": "helmets/ln1.png"
     }
 }
-}
+
 # Download the face landmarker model if not present
 model_path = 'face_landmarker.task'
 if not os.path.exists(model_path):
@@ -136,7 +148,7 @@ def get_driver_assignment(team_name):
     lineups = {
         "ferrari": ("Lewis Hamilton", "Charles Leclerc"),
         "mercedes": ("George Russell", "Kimi Antonelli"),
-        "redbull": ("Max Verstappen", "Sergio Perez"),
+        "redbull": ("Max Verstappen", "Yuki Tsunoda"),
         "mclaren": ("Lando Norris", "Oscar Piastri"),
         "williams": ("Carlos Sainz", "Alex Albon"),
         "astonmartin": ("Fernando Alonso", "Lance Stroll")
