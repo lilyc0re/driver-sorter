@@ -20,7 +20,7 @@ assets ={
         "leclerc": "helmets/ferrari/charles/cl1.jpg",
         "sainz": "helmets/ferrari/lewis/lh1.png"
     },
-    "astonmartin": {
+    "astondmartin": {
         "alonso": "helmets/aston martin/alonso/fa1.png",
         "stroll": "helmets/aston martin/lance/ls1.png"
     },
